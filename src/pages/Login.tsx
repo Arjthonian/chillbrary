@@ -24,7 +24,8 @@ import {
     FormLabel,
     FormMessage,
 } from '@/components/ui/form';
-import { Loader2 } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Loader2, User, ShieldCheck } from 'lucide-react';
 
 const loginSchema = z.object({
     email: z.string().email(),
@@ -33,6 +34,7 @@ const loginSchema = z.object({
 
 export default function Login() {
     const [isLoading, setIsLoading] = useState(false);
+    const [loginType, setLoginType] = useState<'member' | 'admin'>('member');
     const navigate = useNavigate();
     const location = useLocation();
     const from = location.state?.from?.pathname || '/dashboard';
@@ -48,7 +50,7 @@ export default function Login() {
     const onSubmit = async (values: z.infer<typeof loginSchema>) => {
         setIsLoading(true);
         try {
-            const { error } = await supabase.auth.signInWithPassword({
+            const { data: authData, error } = await supabase.auth.signInWithPassword({
                 email: values.email,
                 password: values.password,
             });
@@ -57,12 +59,30 @@ export default function Login() {
                 throw error;
             }
 
-            toast.success('Logged in successfully');
+            if (loginType === 'admin') {
+                // Check if user is actually an admin
+                const { data: profile } = await supabase
+                    .from('profiles')
+                    .select('role')
+                    .eq('id', authData.user.id)
+                    .single();
+
+                if (!profile || profile.role !== 'admin') {
+                    await supabase.auth.signOut();
+                    throw new Error('Unauthorized access. Admin privileges required.');
+                }
+            }
+
+            toast.success(`Logged in as ${loginType}`);
             navigate(from, { replace: true });
         } catch (error: any) {
             toast.error('Login failed', {
                 description: error.message || 'Please check your credentials',
             });
+            // Ensure signOut on failure if session started
+            if (error.message.includes('Unauthorized')) {
+                await supabase.auth.signOut();
+            }
         } finally {
             setIsLoading(false);
         }
@@ -74,10 +94,23 @@ export default function Login() {
                 <CardHeader className="space-y-1">
                     <CardTitle className="text-2xl font-bold font-display text-center">Welcome back</CardTitle>
                     <CardDescription className="text-center">
-                        Enter your email to sign in to your account
+                        Sign in to continue to Lumina Library
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
+                    <Tabs defaultValue="member" onValueChange={(v) => setLoginType(v as 'member' | 'admin')} className="w-full mb-6">
+                        <TabsList className="grid w-full grid-cols-2">
+                            <TabsTrigger value="member" className="flex items-center gap-2">
+                                <User className="w-4 h-4" />
+                                Member
+                            </TabsTrigger>
+                            <TabsTrigger value="admin" className="flex items-center gap-2">
+                                <ShieldCheck className="w-4 h-4" />
+                                Admin
+                            </TabsTrigger>
+                        </TabsList>
+                    </Tabs>
+
                     <Form {...form}>
                         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                             <FormField
@@ -87,7 +120,7 @@ export default function Login() {
                                     <FormItem>
                                         <FormLabel>Email</FormLabel>
                                         <FormControl>
-                                            <Input placeholder="m@example.com" {...field} />
+                                            <Input placeholder="name@example.com" {...field} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -108,7 +141,7 @@ export default function Login() {
                             />
                             <Button type="submit" className="w-full glow-primary" disabled={isLoading}>
                                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Sign In
+                                Sign In as {loginType === 'admin' ? 'Admin' : 'Member'}
                             </Button>
                         </form>
                     </Form>

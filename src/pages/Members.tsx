@@ -22,12 +22,14 @@ import {
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { useMembers, useAddMember, useDeleteMember, useUpdateMemberStatus, Member } from '@/hooks/useMembers';
+import { useAuth } from '@/contexts/AuthContext';
 
 const membershipTypes = ['All', 'student', 'faculty', 'general'];
 const statuses = ['All', 'active', 'inactive'];
 
 export default function Members() {
   const { data: members = [], isLoading } = useMembers();
+  const { isAdmin } = useAuth();
   const addMemberMutation = useAddMember();
   const deleteMemberMutation = useDeleteMember();
   const updateStatusMutation = useUpdateMemberStatus();
@@ -82,60 +84,62 @@ export default function Members() {
             <h1 className="font-display text-3xl font-bold text-foreground">Members</h1>
             <p className="text-muted-foreground mt-1">Manage library members and their subscriptions</p>
           </div>
-          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="gap-2 glow-primary">
-                <Plus className="w-4 h-4" />
-                Add Member
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px]">
-              <DialogHeader>
-                <DialogTitle className="font-display">Add New Member</DialogTitle>
-                <DialogDescription>
-                  Register a new member to the library system.
-                </DialogDescription>
-              </DialogHeader>
-              <form onSubmit={handleAddMember} className="space-y-4">
-                <div className="grid gap-4">
-                  <div>
-                    <Label htmlFor="name">Full Name</Label>
-                    <Input id="name" name="name" placeholder="John Doe" required />
+          {isAdmin && (
+            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="gap-2 glow-primary">
+                  <Plus className="w-4 h-4" />
+                  Add Member
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[500px]">
+                <DialogHeader>
+                  <DialogTitle className="font-display">Add New Member</DialogTitle>
+                  <DialogDescription>
+                    Register a new member to the library system.
+                  </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleAddMember} className="space-y-4">
+                  <div className="grid gap-4">
+                    <div>
+                      <Label htmlFor="name">Full Name</Label>
+                      <Input id="name" name="name" placeholder="John Doe" required />
+                    </div>
+                    <div>
+                      <Label htmlFor="email">Email</Label>
+                      <Input id="email" name="email" type="email" placeholder="john@example.com" required />
+                    </div>
+                    <div>
+                      <Label htmlFor="phone">Phone</Label>
+                      <Input id="phone" name="phone" placeholder="+1 234 567 8900" required />
+                    </div>
+                    <div>
+                      <Label htmlFor="membershipType">Membership Type</Label>
+                      <Select name="membershipType" defaultValue="student">
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="student">Student</SelectItem>
+                          <SelectItem value="faculty">Faculty</SelectItem>
+                          <SelectItem value="general">General</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
-                  <div>
-                    <Label htmlFor="email">Email</Label>
-                    <Input id="email" name="email" type="email" placeholder="john@example.com" required />
+                  <div className="flex justify-end gap-3">
+                    <Button type="button" variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button type="submit" disabled={addMemberMutation.isPending}>
+                      {addMemberMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      Add Member
+                    </Button>
                   </div>
-                  <div>
-                    <Label htmlFor="phone">Phone</Label>
-                    <Input id="phone" name="phone" placeholder="+1 234 567 8900" required />
-                  </div>
-                  <div>
-                    <Label htmlFor="membershipType">Membership Type</Label>
-                    <Select name="membershipType" defaultValue="student">
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="student">Student</SelectItem>
-                        <SelectItem value="faculty">Faculty</SelectItem>
-                        <SelectItem value="general">General</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <div className="flex justify-end gap-3">
-                  <Button type="button" variant="outline" onClick={() => setIsAddDialogOpen(false)}>
-                    Cancel
-                  </Button>
-                  <Button type="submit" disabled={addMemberMutation.isPending}>
-                    {addMemberMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Add Member
-                  </Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
+                </form>
+              </DialogContent>
+            </Dialog>
+          )}
         </div>
 
         {/* Filters */}
@@ -227,22 +231,24 @@ export default function Members() {
                   <span className="text-muted-foreground">Books issued: </span>
                   <span className="font-semibold text-foreground">{'0'}</span>
                 </div>
-                <div className="flex gap-2">
-                  <Button size="sm" variant="ghost" onClick={() => toggleStatus(member.id, member.status)}>
-                    {member.status === 'active' ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
-                  </Button>
-                  <Button size="sm" variant="ghost">
-                    <Edit2 className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="text-destructive hover:text-destructive"
-                    onClick={() => handleDeleteMember(member.id)}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
+                {isAdmin && (
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="ghost" onClick={() => toggleStatus(member.id, member.status)}>
+                      {member.status === 'active' ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
+                    </Button>
+                    <Button size="sm" variant="ghost">
+                      <Edit2 className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => handleDeleteMember(member.id)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                )}
               </div>
             </motion.div>
           ))}

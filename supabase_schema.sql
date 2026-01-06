@@ -69,9 +69,9 @@ create policy "Authenticated users can update" on public.books for update to aut
 create policy "Authenticated users can delete" on public.books for delete to authenticated using (auth.uid() = owner_id);
 
 create policy "Authenticated users can read all" on public.members for select to authenticated using (true);
-create policy "Authenticated users can insert" on public.members for insert to authenticated with check (true);
-create policy "Authenticated users can update" on public.members for update to authenticated using (true);
-create policy "Authenticated users can delete" on public.members for delete to authenticated using (true);
+create policy "Only admins can insert" on public.members for insert to authenticated with check (public.is_admin());
+create policy "Only admins can update" on public.members for update to authenticated using (public.is_admin());
+create policy "Only admins can delete" on public.members for delete to authenticated using (public.is_admin());
 
 create policy "Authenticated users can read all" on public.transactions for select to authenticated using (true);
 create policy "Authenticated users can insert" on public.transactions for insert to authenticated with check (true);
@@ -133,3 +133,43 @@ to authenticated
 using ( bucket_id = 'book-covers' );
 
 
+
+-- Profiles Table (for Roles)
+create table public.profiles (
+  id uuid primary key references auth.users(id) on delete cascade,
+  role text not null check (role in ('admin', 'member')) default 'member',
+  created_at timestamptz default now()
+);
+
+-- Enable RLS on profiles
+alter table public.profiles enable row level security;
+
+create policy "Public profiles are viewable by everyone" on public.profiles for select using (true);
+create policy "Users can update own profile" on public.profiles for update using (auth.uid() = id);
+
+-- Function to handle new user signup
+create or replace function public.handle_new_user()
+returns trigger as $$
+begin
+  insert into public.profiles (id, role)
+  values (new.id, 'member');
+  return new;
+end;
+$$ language plpgsql security definer;
+
+-- Trigger for new user signup
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute procedure public.handle_new_user();
+
+-- Helper function to check if user is admin
+create or replace function public.is_admin()
+returns boolean as $$
+begin
+  return exists (
+    select 1 from public.profiles
+    where id = auth.uid()
+    and role = 'admin'
+  );
+end;
+$$ language plpgsql security definer;
