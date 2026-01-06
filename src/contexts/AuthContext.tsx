@@ -76,12 +76,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     const signOut = async () => {
         try {
-            const { error } = await supabase.auth.signOut();
-            if (error) throw error;
+            await supabase.auth.signOut();
+        } catch (error: any) {
+            // Ignore error if session is missing, just clear local state
+            console.error('Error signing out:', error);
+        } finally {
+            setSession(null);
+            setUser(null);
             setRole(null);
             toast.success('Signed out successfully');
-        } catch (error: any) {
-            toast.error('Error signing out', { description: error.message });
         }
     };
 
