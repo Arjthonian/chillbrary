@@ -36,7 +36,8 @@ export default function Transactions() {
   const [selectedStatus, setSelectedStatus] = useState('All');
   const [isIssueDialogOpen, setIsIssueDialogOpen] = useState(false);
 
-  const filteredTransactions = transactions.filter((tx) => {
+  const filteredTransactions = (transactions || []).filter((tx) => {
+    if (!tx) return false;
     const bookTitle = tx.book_title || '';
     const memberName = tx.member_name || '';
     const bookIsbn = tx.book_isbn || '';

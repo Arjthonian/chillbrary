@@ -25,9 +25,12 @@ export default function Reports() {
     }
 
     // --- Data Aggregation ---
+    const booksList = books || [];
+    const membersList = members || [];
+    const transactionsList = transactions || [];
 
-    // 1. Monthly Transactions (Reuse logic from Dashboard, maybe cleaner here)
-    const monthlyCounts = transactions.reduce((acc, t) => {
+    // 1. Monthly Transactions
+    const monthlyCounts = transactionsList.reduce((acc, t) => {
         const date = new Date(t.type === 'issue' ? t.issue_date : (t.return_date || t.issue_date));
         const month = date.toLocaleString('default', { month: 'short' });
 
@@ -43,18 +46,19 @@ export default function Reports() {
     );
 
     // 2. Categories
-    const categoryCounts = books.reduce((acc, book) => {
-        acc[book.category] = (acc[book.category] || 0) + 1;
+    const categoryCounts = booksList.reduce((acc, book) => {
+        const cat = book.category || 'Uncategorized';
+        acc[cat] = (acc[cat] || 0) + 1;
         return acc;
     }, {} as Record<string, number>);
 
     const categoryData = Object.entries(categoryCounts)
         .map(([cat, count]) => ({ category: cat, count }))
-        .sort((a, b) => b.count - a.count); // Sort by count descending
+        .sort((a, b) => b.count - a.count);
 
     // 3. Top Active Members
-    const memberTransactionCounts = transactions.reduce((acc, t) => {
-        if (t.type === 'issue') { // Only count issues as "activity" or both? Let's count all interactions.
+    const memberTransactionCounts = transactionsList.reduce((acc, t) => {
+        if (t.type === 'issue' && t.member_id) {
             acc[t.member_id] = (acc[t.member_id] || 0) + 1;
         }
         return acc;
@@ -64,17 +68,19 @@ export default function Reports() {
         .sort(([, a], [, b]) => b - a)
         .slice(0, 5)
         .map(([id, count]) => {
-            const member = members.find(m => m.id === id);
+            const member = membersList.find(m => m.id === id);
             return {
                 ...member,
-                count
+                count,
+                name: member?.name || 'Unknown',
+                email: member?.email || 'N/A'
             };
         })
-        .filter(m => m.id); // Filter out if member deleted
+        .filter(m => m.id);
 
     // 4. Popular Books
-    const bookIssueCounts = transactions.reduce((acc, t) => {
-        if (t.type === 'issue') {
+    const bookIssueCounts = transactionsList.reduce((acc, t) => {
+        if (t.type === 'issue' && t.book_id) {
             acc[t.book_id] = (acc[t.book_id] || 0) + 1;
         }
         return acc;
@@ -84,10 +90,12 @@ export default function Reports() {
         .sort(([, a], [, b]) => b - a)
         .slice(0, 5)
         .map(([id, count]) => {
-            const book = books.find(b => b.id === id);
+            const book = booksList.find(b => b.id === id);
             return {
                 ...book,
-                count
+                count,
+                title: book?.title || 'Unknown Title',
+                author: book?.author || 'Unknown Author'
             };
         })
         .filter(b => b.id);

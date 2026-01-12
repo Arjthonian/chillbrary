@@ -39,10 +39,13 @@ export default function Members() {
   const [selectedStatus, setSelectedStatus] = useState('All');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
 
-  const filteredMembers = members.filter((member) => {
+  const filteredMembers = (members || []).filter((member) => {
+    if (!member) return false;
+    const name = member.name || '';
+    const email = member.email || '';
     const matchesSearch =
-      member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      member.email.toLowerCase().includes(searchQuery.toLowerCase());
+      name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      email.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesType = selectedType === 'All' || member.membership_type === selectedType;
     const matchesStatus = selectedStatus === 'All' || member.status === selectedStatus;
     return matchesSearch && matchesType && matchesStatus;
@@ -195,7 +198,7 @@ export default function Members() {
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-4">
                   <img
-                    src={member.avatar_url}
+                    src={member.avatar_url || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop'}
                     alt={member.name}
                     className="w-14 h-14 rounded-full object-cover ring-2 ring-primary/20"
                   />

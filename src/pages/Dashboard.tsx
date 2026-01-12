@@ -16,18 +16,17 @@ export default function Dashboard() {
   const isLoading = booksLoading || membersLoading || transactionsLoading;
 
   // Calculate Stats
-  const totalBooks = books.length;
-  const activeMembers = members.filter(m => m.status === 'active').length;
+  const booksList = books || [];
+  const membersList = members || [];
+  const transactionsList = transactions || [];
+
+  const totalBooks = booksList.length;
+  const activeMembers = membersList.filter(m => m.status === 'active').length;
   // Books currently issued (active transactions)
-  const booksIssued = transactions.filter(t => t.status === 'active').length;
-  // Total fines (mock calc: overdue days * 0.50 if fine field specific logic isn't fully migrated)
-  // Or sum explicit 'fine' field if available. My Transaction interface has 'fine'.
-  // I will sum specific fines from the table if present, else estimate from overdue logic for display consistency
-  // Actually, let's just count 'overdue' status transactions for now or something simple if 'fine' is erratic.
-  // The 'OverdueBooks' component calculates fines on the fly. 
-  // I'll calculate total estimated pending fines.
-  const totalFines = transactions
-    .filter(t => t.status === 'active' && new Date(t.due_date) < new Date())
+  const booksIssued = transactionsList.filter(t => t.status === 'active').length;
+  // Total fines (mock calc: overdue days * 0.50)
+  const totalFines = transactionsList
+    .filter(t => t.status === 'active' && t.due_date && new Date(t.due_date) < new Date())
     .reduce((acc, t) => {
       const due = new Date(t.due_date);
       const now = new Date();
@@ -36,8 +35,9 @@ export default function Dashboard() {
     }, 0);
 
   // Chart Data: Category Distribution
-  const categoryCounts = books.reduce((acc, book) => {
-    acc[book.category] = (acc[book.category] || 0) + 1;
+  const categoryCounts = booksList.reduce((acc, book) => {
+    const cat = book.category || 'Uncategorized';
+    acc[cat] = (acc[cat] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
 
@@ -47,9 +47,7 @@ export default function Dashboard() {
   }));
 
   // Chart Data: Monthly Transactions (Issued vs Returned)
-  // This is a bit complex to do perfectly without a proper aggregation query, 
-  // so we'll do a simple client-side aggregation over available transactions.
-  const monthlyCounts = transactions.reduce((acc, t) => {
+  const monthlyCounts = transactionsList.reduce((acc, t) => {
     const date = new Date(t.type === 'issue' ? t.issue_date : (t.return_date || t.issue_date));
     const month = date.toLocaleString('default', { month: 'short' });
 

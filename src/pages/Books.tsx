@@ -43,11 +43,15 @@ export default function Books() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
 
-  const filteredBooks = books.filter((book) => {
+  const filteredBooks = (books || []).filter((book) => {
+    if (!book) return false;
+    const title = book.title || '';
+    const author = book.author || '';
+    const isbn = book.isbn || '';
     const matchesSearch =
-      book.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      book.author.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      book.isbn.includes(searchQuery);
+      title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      author.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      isbn.includes(searchQuery);
     const matchesCategory = selectedCategory === 'All' || book.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
